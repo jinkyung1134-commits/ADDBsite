@@ -17,7 +17,7 @@ const port = Number(process.env.PORT || 8787);
 const adminUser = process.env.ADMIN_USER || "admin";
 const adminPassword = process.env.ADMIN_PASSWORD || "";
 
-app.use(express.json({ limit: "64kb" }));
+app.use(express.json({ limit: "8mb" }));
 
 const defaultSiteSettings = {
   kicker: "선착순 안내방 신청",
@@ -40,6 +40,44 @@ const defaultSiteSettings = {
   successText: "{name}님, 안내방 초대 정보를 전송해드릴게요.",
   sideTitle: "소재별 문구를 관리자에서 바로 수정할 수 있습니다.",
   sideText: "광고 링크로 들어온 신청 데이터는 관리자 화면에 저장되고, 랜딩 문구는 설정 탭에서 바꿀 수 있습니다.",
+  blocks: [
+    {
+      id: "intro",
+      type: "text",
+      kicker: "선착순 안내방 신청",
+      title: "무료 안내방 신청",
+      body: "",
+    },
+    {
+      id: "main-photo",
+      type: "photo",
+      imageSrc: "/images/ad-video-thumbnail.png",
+      badge: "상세 안내 공개",
+      title: "신청 후 안내방에서 확인하세요",
+    },
+    {
+      id: "numbers",
+      type: "stats",
+      items: [
+        { icon: "flame", label: "신청 마감까지", value: "오늘 마감" },
+        { icon: "users", label: "현재 신청 대기", value: "278명" },
+      ],
+    },
+    {
+      id: "lead-form",
+      type: "form",
+      nameLabel: "성함",
+      namePlaceholder: "예시) 홍길동",
+      phoneLabel: "연락처",
+      phonePlaceholder: "예시) 01012345678 (- 제외)",
+      consentTitle: "정보제공동의",
+      consentText: "신청 시, 개인정보 수집 및 이용에 동의한 것으로 간주됩니다.",
+      submitText: "지금 신청하기",
+      secureNote: "입력한 정보는 안전하게 저장됩니다.",
+      successTitle: "신청이 완료되었습니다.",
+      successText: "{name}님, 안내방 초대 정보를 전송해드릴게요.",
+    },
+  ],
 };
 
 async function ensureStore() {
@@ -63,14 +101,78 @@ async function writeLeads(leads) {
   await writeFile(leadsFile, JSON.stringify(leads, null, 2), "utf8");
 }
 
-function normalizeSettings(input) {
-  return Object.fromEntries(
-    Object.entries(defaultSiteSettings).map(([key, fallback]) => {
-      const value = input && Object.hasOwn(input, key) ? input[key] : fallback;
-      const text = String(value ?? fallback).trim();
-      return [key, text.slice(0, 500) || fallback];
+function sanitizeText(value, fallback = "", maxLength = 500) {
+  const text = String(value ?? fallback).trim();
+  return (text || fallback).slice(0, maxLength);
+}
+
+function normalizeBlocks(blocks) {
+  if (!Array.isArray(blocks) || !blocks.length) return defaultSiteSettings.blocks;
+
+  return blocks
+    .map((block, index) => {
+      const id = sanitizeText(block.id, `block-${index}`, 80);
+
+      if (block.type === "photo") {
+        return {
+          id,
+          type: "photo",
+          imageSrc: sanitizeText(block.imageSrc, "/images/ad-video-thumbnail.png", 7_000_000),
+          badge: sanitizeText(block.badge, "상세 안내 공개", 120),
+          title: sanitizeText(block.title, "신청 후 안내방에서 확인하세요", 200),
+        };
+      }
+
+      if (block.type === "stats") {
+        const items = Array.isArray(block.items) && block.items.length ? block.items : defaultSiteSettings.blocks[2].items;
+        return {
+          id,
+          type: "stats",
+          items: items.slice(0, 4).map((item, itemIndex) => ({
+            icon: sanitizeText(item.icon, itemIndex === 0 ? "flame" : "users", 30),
+            label: sanitizeText(item.label, itemIndex === 0 ? "신청 마감까지" : "현재 신청 대기", 80),
+            value: sanitizeText(item.value, itemIndex === 0 ? "오늘 마감" : "278명", 80),
+          })),
+        };
+      }
+
+      if (block.type === "form") {
+        return {
+          id,
+          type: "form",
+          nameLabel: sanitizeText(block.nameLabel, "성함", 80),
+          namePlaceholder: sanitizeText(block.namePlaceholder, "예시) 홍길동", 120),
+          phoneLabel: sanitizeText(block.phoneLabel, "연락처", 80),
+          phonePlaceholder: sanitizeText(block.phonePlaceholder, "예시) 01012345678 (- 제외)", 120),
+          consentTitle: sanitizeText(block.consentTitle, "정보제공동의", 80),
+          consentText: sanitizeText(block.consentText, "신청 시, 개인정보 수집 및 이용에 동의한 것으로 간주됩니다.", 500),
+          submitText: sanitizeText(block.submitText, "지금 신청하기", 80),
+          secureNote: sanitizeText(block.secureNote, "입력한 정보는 안전하게 저장됩니다.", 160),
+          successTitle: sanitizeText(block.successTitle, "신청이 완료되었습니다.", 120),
+          successText: sanitizeText(block.successText, "{name}님, 안내방 초대 정보를 전송해드릴게요.", 300),
+        };
+      }
+
+      return {
+        id,
+        type: "text",
+        kicker: sanitizeText(block.kicker, "", 120),
+        title: sanitizeText(block.title, "새 문구", 200),
+        body: sanitizeText(block.body, "", 800),
+      };
     })
-  );
+    .slice(0, 20);
+}
+
+function normalizeSettings(input) {
+  return {
+    ...Object.fromEntries(
+      Object.entries(defaultSiteSettings)
+        .filter(([key]) => key !== "blocks")
+        .map(([key, fallback]) => [key, sanitizeText(input?.[key], fallback)])
+    ),
+    blocks: normalizeBlocks(input?.blocks),
+  };
 }
 
 async function readSiteSettings() {

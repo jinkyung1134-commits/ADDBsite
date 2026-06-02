@@ -1041,6 +1041,186 @@ tbody tr:hover {
   justify-content: flex-end;
 }
 
+.builder-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.page-builder {
+  padding: 20px;
+  display: grid;
+  grid-template-columns: minmax(320px, 430px) minmax(220px, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.builder-preview {
+  min-width: 0;
+}
+
+.editor-preview-surface {
+  width: min(100%, 390px);
+  margin: 0 auto;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  display: grid;
+  gap: 14px;
+  background: #08090d;
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.28);
+}
+
+.preview-edit-block {
+  position: relative;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.035);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.preview-edit-block.selected {
+  border-color: rgba(160, 107, 255, 0.86);
+  box-shadow: 0 0 0 4px rgba(124, 77, 255, 0.18);
+}
+
+.preview-block-toolbar {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.preview-block-toolbar span {
+  color: #cbbbff;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.preview-block-toolbar button {
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  display: grid;
+  place-items: center;
+  color: #ff9aaa;
+  background: rgba(255, 82, 105, 0.08);
+}
+
+.preview-text-editor,
+.preview-photo-editor,
+.preview-form-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.preview-text-editor input,
+.preview-text-editor textarea,
+.preview-photo-editor input,
+.preview-photo-editor textarea,
+.preview-form-editor input,
+.preview-form-editor textarea,
+.preview-stat-card input {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius);
+  outline: none;
+  color: #ffffff;
+  background: #101217;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.preview-text-editor input,
+.preview-photo-editor input,
+.preview-form-editor input,
+.preview-stat-card input {
+  height: 42px;
+  padding: 0 12px;
+}
+
+.preview-text-editor textarea,
+.preview-photo-editor textarea,
+.preview-form-editor textarea {
+  min-height: 74px;
+  padding: 11px 12px;
+  resize: vertical;
+}
+
+.preview-title-input {
+  min-height: 88px;
+  font-size: 23px !important;
+  font-weight: 950 !important;
+  line-height: 1.18;
+}
+
+.preview-photo-editor img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  display: block;
+  object-fit: cover;
+  background: #151821;
+}
+
+.photo-upload-button {
+  min-height: 42px;
+  border: 1px solid rgba(160, 107, 255, 0.4);
+  border-radius: var(--radius);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #ffffff;
+  background: rgba(124, 77, 255, 0.16);
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.photo-upload-button input {
+  display: none;
+}
+
+.preview-stats-editor {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.preview-stat-card {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  display: grid;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.preview-stat-card svg {
+  color: var(--orange);
+}
+
+.builder-meta {
+  padding: 0;
+}
+
+.builder-error {
+  margin: 0 20px 18px;
+}
+
+.builder-actions {
+  padding: 0 20px 20px;
+}
+
 .insight-grid {
   padding: 20px;
   display: grid;
@@ -1111,6 +1291,14 @@ tbody tr:hover {
     flex-direction: column;
   }
 
+  .builder-tools {
+    justify-content: stretch;
+  }
+
+  .builder-tools .ghost-button {
+    flex: 1 1 140px;
+  }
+
   .toolbar-actions {
     justify-content: stretch;
   }
@@ -1127,6 +1315,14 @@ tbody tr:hover {
 
   .settings-actions {
     justify-content: stretch;
+  }
+
+  .page-builder {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-preview-surface {
+    width: 100%;
   }
 
   .insight-grid {
@@ -1193,5 +1389,9 @@ tbody tr:hover {
 
   .admin-sidebar nav {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .preview-stats-editor {
+    grid-template-columns: 1fr;
   }
 }

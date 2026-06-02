@@ -13,12 +13,16 @@ import {
   Link as LinkIcon,
   LockKeyhole,
   Menu,
+  ImagePlus,
   Phone,
   Play,
+  Plus,
   RefreshCcw,
   Search,
+  Trash2,
   Settings,
   ShieldCheck,
+  Type,
   User,
   Users,
 } from "lucide-react";
@@ -46,7 +50,97 @@ const defaultSiteSettings = {
   successText: "{name}님, 안내방 초대 정보를 전송해드릴게요.",
   sideTitle: "소재별 문구를 관리자에서 바로 수정할 수 있습니다.",
   sideText: "광고 링크로 들어온 신청 데이터는 관리자 화면에 저장되고, 랜딩 문구는 설정 탭에서 바꿀 수 있습니다.",
+  blocks: [
+    {
+      id: "intro",
+      type: "text",
+      kicker: "선착순 안내방 신청",
+      title: "무료 안내방 신청",
+      body: "",
+    },
+    {
+      id: "main-photo",
+      type: "photo",
+      imageSrc: "/images/ad-video-thumbnail.png",
+      badge: "상세 안내 공개",
+      title: "신청 후 안내방에서 확인하세요",
+    },
+    {
+      id: "numbers",
+      type: "stats",
+      items: [
+        { icon: "flame", label: "신청 마감까지", value: "오늘 마감" },
+        { icon: "users", label: "현재 신청 대기", value: "278명" },
+      ],
+    },
+    {
+      id: "lead-form",
+      type: "form",
+      nameLabel: "성함",
+      namePlaceholder: "예시) 홍길동",
+      phoneLabel: "연락처",
+      phonePlaceholder: "예시) 01012345678 (- 제외)",
+      consentTitle: "정보제공동의",
+      consentText: "신청 시, 개인정보 수집 및 이용에 동의한 것으로 간주됩니다.",
+      submitText: "지금 신청하기",
+      secureNote: "입력한 정보는 안전하게 저장됩니다.",
+      successTitle: "신청이 완료되었습니다.",
+      successText: "{name}님, 안내방 초대 정보를 전송해드릴게요.",
+    },
+  ],
 };
+
+function cloneDefaultSettings() {
+  return JSON.parse(JSON.stringify(defaultSiteSettings));
+}
+
+function mergeSiteSettings(settings) {
+  const defaults = cloneDefaultSettings();
+  return {
+    ...defaults,
+    ...(settings || {}),
+    blocks: Array.isArray(settings?.blocks) && settings.blocks.length ? settings.blocks : defaults.blocks,
+  };
+}
+
+function createBlock(type) {
+  const id = `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+  if (type === "photo") {
+    return {
+      id,
+      type: "photo",
+      imageSrc: "/images/ad-video-thumbnail.png",
+      badge: "사진 설명",
+      title: "사진 제목을 입력하세요",
+    };
+  }
+
+  if (type === "form") {
+    return {
+      id,
+      type: "form",
+      nameLabel: "성함",
+      namePlaceholder: "예시) 홍길동",
+      phoneLabel: "연락처",
+      phonePlaceholder: "예시) 01012345678 (- 제외)",
+      consentTitle: "정보제공동의",
+      consentText: "신청 시, 개인정보 수집 및 이용에 동의한 것으로 간주됩니다.",
+      submitText: "지금 신청하기",
+      secureNote: "입력한 정보는 안전하게 저장됩니다.",
+      successTitle: "신청이 완료되었습니다.",
+      successText: "{name}님, 안내방 초대 정보를 전송해드릴게요.",
+    };
+  }
+
+  return {
+    id,
+    type: "text",
+    kicker: "",
+    title: "새 글 제목",
+    body: "설명 문구를 입력하세요.",
+  };
+}
 
 function App() {
   const isAdmin = window.location.pathname.startsWith("/admin");
@@ -73,7 +167,7 @@ function LeadPage() {
     phone: "",
     consent: true,
   });
-  const [siteSettings, setSiteSettings] = useState(defaultSiteSettings);
+  const [siteSettings, setSiteSettings] = useState(() => cloneDefaultSettings());
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [savedLead, setSavedLead] = useState(null);
@@ -92,10 +186,10 @@ function LeadPage() {
         const response = await fetch("/api/site-settings");
         const payload = await response.json();
         if (isMounted && payload.settings) {
-          setSiteSettings({ ...defaultSiteSettings, ...payload.settings });
+          setSiteSettings(mergeSiteSettings(payload.settings));
         }
       } catch {
-        if (isMounted) setSiteSettings(defaultSiteSettings);
+        if (isMounted) setSiteSettings(cloneDefaultSettings());
       }
     }
 
@@ -146,76 +240,26 @@ function LeadPage() {
       <section className="lead-stage" aria-label="광고 DB 신청 페이지">
         <div className="phone-frame">
           <div className="lead-content">
-            <div className="lead-heading">
-              <p>{siteSettings.kicker}</p>
-              <h1>{siteSettings.title}</h1>
-            </div>
-
-            <VideoPanel settings={siteSettings} />
-
-            <div className="live-row" aria-label="라이브 현황">
-              <div>
-                <Flame size={19} />
-                <span>{siteSettings.countdownLabel}</span>
-                <strong>{siteSettings.countdownValue}</strong>
-              </div>
-              <div>
-                <Users size={19} />
-                <span>{siteSettings.peopleLabel}</span>
-                <strong>{siteSettings.peopleValue}</strong>
-              </div>
-            </div>
-
-            <form className="lead-form" onSubmit={submitLead}>
-              <label>
-                <span>{siteSettings.nameLabel} <b>*</b></span>
-                <input
-                  autoComplete="name"
-                  name="name"
-                  placeholder={siteSettings.namePlaceholder}
-                  value={form.name}
-                  onChange={(event) => updateField("name", event.target.value)}
-                />
-              </label>
-
-              <label>
-                <span>{siteSettings.phoneLabel} <b>*</b></span>
-                <input
-                  autoComplete="tel"
-                  inputMode="numeric"
-                  name="phone"
-                  placeholder={siteSettings.phonePlaceholder}
-                  value={form.phone}
-                  onChange={(event) => updateField("phone", event.target.value)}
-                />
-              </label>
-
-              <label className="consent-row">
-                <input
-                  type="checkbox"
-                  checked={form.consent}
-                  onChange={(event) => updateField("consent", event.target.checked)}
-                />
-                <span>
-                  <strong>{siteSettings.consentTitle}</strong>
-                  <small>{siteSettings.consentText}</small>
-                </span>
-              </label>
-
-              {error ? <p className="form-error">{error}</p> : null}
-
-              <button className="primary-button" disabled={!canSubmit || status === "submitting"} type="submit">
-                {status === "submitting" ? "저장 중..." : siteSettings.submitText}
-                <ArrowRight size={20} />
-              </button>
-
-              <p className="secure-note">
-                <LockKeyhole size={14} />
-                {siteSettings.secureNote}
-              </p>
-            </form>
-
-            {status === "success" ? <SuccessCard lead={savedLead} settings={siteSettings} /> : null}
+            {siteSettings.blocks.map((block) => {
+              if (block.type === "photo") return <PhotoBlock block={block} key={block.id} />;
+              if (block.type === "stats") return <StatsBlock block={block} key={block.id} />;
+              if (block.type === "form") {
+                return (
+                  <LeadFormBlock
+                    block={block}
+                    canSubmit={canSubmit}
+                    error={error}
+                    form={form}
+                    key={block.id}
+                    savedLead={savedLead}
+                    status={status}
+                    submitLead={submitLead}
+                    updateField={updateField}
+                  />
+                );
+              }
+              return <TextBlock block={block} key={block.id} />;
+            })}
           </div>
         </div>
 
@@ -238,19 +282,102 @@ function LeadPage() {
   );
 }
 
-function VideoPanel({ settings }) {
+function TextBlock({ block }) {
+  return (
+    <div className="lead-heading">
+      {block.kicker ? <p>{block.kicker}</p> : null}
+      <h1>{block.title}</h1>
+      {block.body ? <p className="lead-body-copy">{block.body}</p> : null}
+    </div>
+  );
+}
+
+function PhotoBlock({ block }) {
   return (
     <article className="video-panel">
-      <img src="/images/ad-video-thumbnail.png" alt="광고 영상 썸네일" />
+      <img src={block.imageSrc || "/images/ad-video-thumbnail.png"} alt="신청 페이지 사진" />
       <div className="video-shade" />
       <button className="play-button" type="button" aria-label="영상 재생">
         <Play size={28} fill="currentColor" />
       </button>
       <div className="video-copy">
-        <span>{settings.videoBadge}</span>
-        <strong>{settings.videoTitle}</strong>
+        {block.badge ? <span>{block.badge}</span> : null}
+        {block.title ? <strong>{block.title}</strong> : null}
       </div>
     </article>
+  );
+}
+
+function StatsBlock({ block }) {
+  const items = Array.isArray(block.items) && block.items.length ? block.items : defaultSiteSettings.blocks[2].items;
+
+  return (
+    <div className="live-row" aria-label="신청 현황">
+      {items.slice(0, 2).map((item, index) => (
+        <div key={`${item.label}-${index}`}>
+          {item.icon === "users" ? <Users size={19} /> : <Flame size={19} />}
+          <span>{item.label}</span>
+          <strong>{item.value}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LeadFormBlock({ block, canSubmit, error, form, savedLead, status, submitLead, updateField }) {
+  return (
+    <>
+      <form className="lead-form" onSubmit={submitLead}>
+        <label>
+          <span>{block.nameLabel} <b>*</b></span>
+          <input
+            autoComplete="name"
+            name="name"
+            placeholder={block.namePlaceholder}
+            value={form.name}
+            onChange={(event) => updateField("name", event.target.value)}
+          />
+        </label>
+
+        <label>
+          <span>{block.phoneLabel} <b>*</b></span>
+          <input
+            autoComplete="tel"
+            inputMode="numeric"
+            name="phone"
+            placeholder={block.phonePlaceholder}
+            value={form.phone}
+            onChange={(event) => updateField("phone", event.target.value)}
+          />
+        </label>
+
+        <label className="consent-row">
+          <input
+            type="checkbox"
+            checked={form.consent}
+            onChange={(event) => updateField("consent", event.target.checked)}
+          />
+          <span>
+            <strong>{block.consentTitle}</strong>
+            <small>{block.consentText}</small>
+          </span>
+        </label>
+
+        {error ? <p className="form-error">{error}</p> : null}
+
+        <button className="primary-button" disabled={!canSubmit || status === "submitting"} type="submit">
+          {status === "submitting" ? "저장 중..." : block.submitText}
+          <ArrowRight size={20} />
+        </button>
+
+        <p className="secure-note">
+          <LockKeyhole size={14} />
+          {block.secureNote}
+        </p>
+      </form>
+
+      {status === "success" ? <SuccessCard block={block} lead={savedLead} /> : null}
+    </>
   );
 }
 
@@ -264,8 +391,8 @@ function Metric({ icon, value, label }) {
   );
 }
 
-function SuccessCard({ lead, settings }) {
-  const message = settings.successText.replace("{name}", lead?.name || "신청자");
+function SuccessCard({ block, lead }) {
+  const message = block.successText.replace("{name}", lead?.name || "신청자");
 
   return (
     <div className="success-card" role="status">
@@ -273,7 +400,7 @@ function SuccessCard({ lead, settings }) {
         <Check size={23} />
       </span>
       <div>
-        <strong>{settings.successTitle}</strong>
+        <strong>{block.successTitle}</strong>
         <p>{message}</p>
         {openChatUrl ? (
           <a href={openChatUrl} target="_blank" rel="noreferrer">
@@ -342,7 +469,7 @@ function AdminPage() {
     { id: "leads", label: "신청자 목록", icon: <Users size={18} /> },
     { id: "links", label: "유입 링크 관리", icon: <LinkIcon size={18} /> },
     { id: "stats", label: "통계 분석", icon: <BarChart3 size={18} /> },
-    { id: "settings", label: "설정", icon: <Settings size={18} /> },
+    { id: "settings", label: "페이지 편집", icon: <Settings size={18} /> },
   ];
 
   return (
@@ -558,7 +685,8 @@ function StatsPanel({ leads, uniqueSources }) {
 }
 
 function SettingsPanel() {
-  const [settings, setSettings] = useState(defaultSiteSettings);
+  const [settings, setSettings] = useState(() => cloneDefaultSettings());
+  const [selectedBlockId, setSelectedBlockId] = useState(defaultSiteSettings.blocks[0].id);
   const [saveState, setSaveState] = useState("idle");
   const [error, setError] = useState("");
 
@@ -570,7 +698,9 @@ function SettingsPanel() {
         const response = await fetch("/api/site-settings");
         const payload = await response.json();
         if (isMounted && payload.settings) {
-          setSettings({ ...defaultSiteSettings, ...payload.settings });
+          const merged = mergeSiteSettings(payload.settings);
+          setSettings(merged);
+          setSelectedBlockId(merged.blocks[0]?.id || "");
         }
       } catch {
         if (isMounted) setError("신청 페이지 설정을 불러오지 못했습니다.");
@@ -583,12 +713,58 @@ function SettingsPanel() {
     };
   }, []);
 
-  function updateSetting(field, value) {
-    setSettings((current) => ({ ...current, [field]: value }));
+  function addBlock(type) {
+    if (type === "form" && settings.blocks.some((block) => block.type === "form")) {
+      const formBlock = settings.blocks.find((block) => block.type === "form");
+      setSelectedBlockId(formBlock.id);
+      setError("신청칸은 이미 있습니다. 기존 신청칸을 선택했어요.");
+      window.setTimeout(() => setError(""), 1800);
+      return;
+    }
+
+    const block = createBlock(type);
+    setSettings((current) => ({ ...current, blocks: [...current.blocks, block] }));
+    setSelectedBlockId(block.id);
   }
 
-  async function saveSettings(event) {
-    event.preventDefault();
+  function removeBlock(blockId) {
+    setSettings((current) => {
+      const nextBlocks = current.blocks.filter((block) => block.id !== blockId);
+      const safeBlocks = nextBlocks.length ? nextBlocks : [createBlock("text")];
+      setSelectedBlockId(safeBlocks[0].id);
+      return { ...current, blocks: safeBlocks };
+    });
+  }
+
+  function updateBlock(blockId, updater) {
+    setSettings((current) => ({
+      ...current,
+      blocks: current.blocks.map((block) => {
+        if (block.id !== blockId) return block;
+        return typeof updater === "function" ? updater(block) : { ...block, ...updater };
+      }),
+    }));
+  }
+
+  function updateStatsItem(blockId, itemIndex, field, value) {
+    updateBlock(blockId, (block) => ({
+      ...block,
+      items: block.items.map((item, index) => (index === itemIndex ? { ...item, [field]: value } : item)),
+    }));
+  }
+
+  async function updatePhotoFile(blockId, file) {
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) {
+      setError("사진은 4MB 이하 파일로 올려주세요.");
+      return;
+    }
+
+    const imageSrc = await readFileAsDataUrl(file);
+    updateBlock(blockId, { imageSrc });
+  }
+
+  async function saveSettings() {
     setSaveState("saving");
     setError("");
 
@@ -604,7 +780,7 @@ function SettingsPanel() {
         throw new Error(payload.error || "설정을 저장하지 못했습니다.");
       }
 
-      setSettings({ ...defaultSiteSettings, ...payload.settings });
+      setSettings(mergeSiteSettings(payload.settings));
       setSaveState("saved");
       window.setTimeout(() => setSaveState("idle"), 1600);
     } catch (requestError) {
@@ -617,62 +793,44 @@ function SettingsPanel() {
     <section className="table-panel compact-panel">
       <div className="table-toolbar">
         <div>
-          <h2>설정</h2>
-          <span>신청 페이지 문구 수정</span>
+          <h2>페이지 편집</h2>
+          <span>미리보기에서 직접 수정</span>
+        </div>
+        <div className="builder-tools" aria-label="페이지 도구">
+          <button className="ghost-button" type="button" onClick={() => addBlock("text")}>
+            <Type size={17} />
+            글 추가
+          </button>
+          <button className="ghost-button" type="button" onClick={() => addBlock("photo")}>
+            <ImagePlus size={17} />
+            사진 추가
+          </button>
+          <button className="ghost-button" type="button" onClick={() => addBlock("form")}>
+            <Plus size={17} />
+            신청칸
+          </button>
         </div>
       </div>
-      <form className="settings-form" onSubmit={saveSettings}>
-        <div className="settings-group">
-          <h3>상단 문구</h3>
-          <EditableField label="작은 제목" value={settings.kicker} onChange={(value) => updateSetting("kicker", value)} />
-          <EditableField label="큰 제목" value={settings.title} onChange={(value) => updateSetting("title", value)} />
+
+      <div className="page-builder">
+        <div className="builder-preview">
+          <div className="editor-preview-surface">
+            {settings.blocks.map((block) => (
+              <EditablePreviewBlock
+                block={block}
+                isSelected={selectedBlockId === block.id}
+                key={block.id}
+                onFileChange={(file) => updatePhotoFile(block.id, file)}
+                onRemove={() => removeBlock(block.id)}
+                onSelect={() => setSelectedBlockId(block.id)}
+                onStatsChange={(itemIndex, field, value) => updateStatsItem(block.id, itemIndex, field, value)}
+                onUpdate={(patch) => updateBlock(block.id, patch)}
+              />
+            ))}
+          </div>
         </div>
 
-        <div className="settings-group">
-          <h3>영상 영역</h3>
-          <EditableField label="영상 배지" value={settings.videoBadge} onChange={(value) => updateSetting("videoBadge", value)} />
-          <EditableField label="영상 제목" value={settings.videoTitle} onChange={(value) => updateSetting("videoTitle", value)} />
-        </div>
-
-        <div className="settings-group two-column">
-          <h3>숫자 영역</h3>
-          <EditableField label="왼쪽 라벨" value={settings.countdownLabel} onChange={(value) => updateSetting("countdownLabel", value)} />
-          <EditableField label="왼쪽 값" value={settings.countdownValue} onChange={(value) => updateSetting("countdownValue", value)} />
-          <EditableField label="오른쪽 라벨" value={settings.peopleLabel} onChange={(value) => updateSetting("peopleLabel", value)} />
-          <EditableField label="오른쪽 값" value={settings.peopleValue} onChange={(value) => updateSetting("peopleValue", value)} />
-        </div>
-
-        <div className="settings-group two-column">
-          <h3>입력 폼</h3>
-          <EditableField label="이름 라벨" value={settings.nameLabel} onChange={(value) => updateSetting("nameLabel", value)} />
-          <EditableField label="이름 안내문" value={settings.namePlaceholder} onChange={(value) => updateSetting("namePlaceholder", value)} />
-          <EditableField label="연락처 라벨" value={settings.phoneLabel} onChange={(value) => updateSetting("phoneLabel", value)} />
-          <EditableField label="연락처 안내문" value={settings.phonePlaceholder} onChange={(value) => updateSetting("phonePlaceholder", value)} />
-          <EditableField label="동의 제목" value={settings.consentTitle} onChange={(value) => updateSetting("consentTitle", value)} />
-          <EditableField label="동의 문구" rows={3} value={settings.consentText} onChange={(value) => updateSetting("consentText", value)} />
-        </div>
-
-        <div className="settings-group">
-          <h3>버튼과 완료 문구</h3>
-          <EditableField label="버튼 문구" value={settings.submitText} onChange={(value) => updateSetting("submitText", value)} />
-          <EditableField label="보안 안내" value={settings.secureNote} onChange={(value) => updateSetting("secureNote", value)} />
-          <EditableField label="완료 제목" value={settings.successTitle} onChange={(value) => updateSetting("successTitle", value)} />
-          <EditableField
-            label="완료 문구"
-            rows={3}
-            value={settings.successText}
-            helper="{name}을 넣으면 신청자 이름으로 바뀝니다."
-            onChange={(value) => updateSetting("successText", value)}
-          />
-        </div>
-
-        <div className="settings-group">
-          <h3>데스크톱 보조 문구</h3>
-          <EditableField label="보조 제목" value={settings.sideTitle} onChange={(value) => updateSetting("sideTitle", value)} />
-          <EditableField label="보조 설명" rows={3} value={settings.sideText} onChange={(value) => updateSetting("sideText", value)} />
-        </div>
-
-        <div className="settings-list">
+        <div className="settings-list builder-meta">
           <div>
             <strong>오픈채팅 URL</strong>
             <small>{openChatUrl || "VITE_OPEN_CHAT_URL 미설정"}</small>
@@ -682,18 +840,94 @@ function SettingsPanel() {
             <small>data/leads.json</small>
           </div>
         </div>
+      </div>
 
-        {error ? <p className="form-error">{error}</p> : null}
+      {error ? <p className="form-error builder-error">{error}</p> : null}
 
-        <div className="settings-actions">
-          <button className="download-button" type="submit" disabled={saveState === "saving"}>
-            <Settings size={17} />
-            {saveState === "saving" ? "저장 중..." : saveState === "saved" ? "저장 완료" : "신청 페이지 저장"}
-          </button>
-        </div>
-      </form>
+      <div className="settings-actions builder-actions">
+        <button className="download-button" type="button" onClick={saveSettings} disabled={saveState === "saving"}>
+          <Settings size={17} />
+          {saveState === "saving" ? "저장 중..." : saveState === "saved" ? "저장 완료" : "신청 페이지 저장"}
+        </button>
+      </div>
     </section>
   );
+}
+
+function EditablePreviewBlock({ block, isSelected, onFileChange, onRemove, onSelect, onStatsChange, onUpdate }) {
+  return (
+    <section className={`preview-edit-block ${isSelected ? "selected" : ""}`} onClick={onSelect}>
+      <div className="preview-block-toolbar">
+        <span>{blockTypeLabel(block.type)}</span>
+        <button type="button" aria-label="블록 삭제" onClick={(event) => { event.stopPropagation(); onRemove(); }}>
+          <Trash2 size={15} />
+        </button>
+      </div>
+
+      {block.type === "photo" ? (
+        <div className="preview-photo-editor">
+          <img src={block.imageSrc || "/images/ad-video-thumbnail.png"} alt="편집 중인 사진" />
+          <label className="photo-upload-button">
+            <ImagePlus size={16} />
+            사진 선택
+            <input accept="image/*" type="file" onChange={(event) => onFileChange(event.target.files?.[0])} />
+          </label>
+          <input value={block.imageSrc} onChange={(event) => onUpdate({ imageSrc: event.target.value })} placeholder="사진 주소 또는 업로드 이미지" />
+          <input value={block.badge} onChange={(event) => onUpdate({ badge: event.target.value })} placeholder="사진 위 작은 문구" />
+          <textarea rows={2} value={block.title} onChange={(event) => onUpdate({ title: event.target.value })} placeholder="사진 위 큰 문구" />
+        </div>
+      ) : null}
+
+      {block.type === "stats" ? (
+        <div className="preview-stats-editor">
+          {block.items.map((item, index) => (
+            <div className="preview-stat-card" key={`${block.id}-${index}`}>
+              {item.icon === "users" ? <Users size={17} /> : <Flame size={17} />}
+              <input value={item.label} onChange={(event) => onStatsChange(index, "label", event.target.value)} placeholder="라벨" />
+              <input value={item.value} onChange={(event) => onStatsChange(index, "value", event.target.value)} placeholder="값" />
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {block.type === "form" ? (
+        <div className="preview-form-editor">
+          <input value={block.nameLabel} onChange={(event) => onUpdate({ nameLabel: event.target.value })} placeholder="이름 라벨" />
+          <input value={block.namePlaceholder} onChange={(event) => onUpdate({ namePlaceholder: event.target.value })} placeholder="이름 안내문" />
+          <input value={block.phoneLabel} onChange={(event) => onUpdate({ phoneLabel: event.target.value })} placeholder="연락처 라벨" />
+          <input value={block.phonePlaceholder} onChange={(event) => onUpdate({ phonePlaceholder: event.target.value })} placeholder="연락처 안내문" />
+          <input value={block.consentTitle} onChange={(event) => onUpdate({ consentTitle: event.target.value })} placeholder="동의 제목" />
+          <textarea rows={2} value={block.consentText} onChange={(event) => onUpdate({ consentText: event.target.value })} placeholder="동의 문구" />
+          <input value={block.submitText} onChange={(event) => onUpdate({ submitText: event.target.value })} placeholder="버튼 문구" />
+          <input value={block.secureNote} onChange={(event) => onUpdate({ secureNote: event.target.value })} placeholder="보안 안내" />
+        </div>
+      ) : null}
+
+      {block.type === "text" ? (
+        <div className="preview-text-editor">
+          <input value={block.kicker} onChange={(event) => onUpdate({ kicker: event.target.value })} placeholder="작은 제목" />
+          <textarea className="preview-title-input" rows={2} value={block.title} onChange={(event) => onUpdate({ title: event.target.value })} placeholder="큰 제목" />
+          <textarea rows={3} value={block.body} onChange={(event) => onUpdate({ body: event.target.value })} placeholder="설명 문구" />
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function blockTypeLabel(type) {
+  if (type === "photo") return "사진";
+  if (type === "form") return "신청칸";
+  if (type === "stats") return "숫자칸";
+  return "글";
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(reader.result));
+    reader.addEventListener("error", () => reject(new Error("사진을 불러오지 못했습니다.")));
+    reader.readAsDataURL(file);
+  });
 }
 
 function EditableField({ helper, label, onChange, rows = 1, value }) {
