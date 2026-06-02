@@ -14,16 +14,13 @@ import {
   LockKeyhole,
   Menu,
   ImagePlus,
-  Phone,
   Play,
   Plus,
   RefreshCcw,
   Search,
   Trash2,
   Settings,
-  ShieldCheck,
   Type,
-  User,
   Users,
 } from "lucide-react";
 import "./styles.css";
@@ -179,6 +176,11 @@ function getThemeStyle(settings) {
 
 function App() {
   const isAdmin = window.location.pathname.startsWith("/admin");
+
+  useEffect(() => {
+    document.title = isAdmin ? "광고 DB 관리" : "신청 페이지";
+  }, [isAdmin]);
+
   return isAdmin ? <AdminPage /> : <LeadPage />;
 }
 
@@ -297,21 +299,6 @@ function LeadPage() {
             })}
           </div>
         </div>
-
-        <aside className="lead-side-panel" aria-label="광고 운영 요약">
-          <h2>{siteSettings.sideTitle}</h2>
-          <p>{siteSettings.sideText}</p>
-          <div className="side-grid">
-            <Metric icon={<User size={18} />} value={siteSettings.nameLabel} label="필수 입력" />
-            <Metric icon={<Phone size={18} />} value={siteSettings.phoneLabel} label="숫자만 저장" />
-            <Metric icon={<ShieldCheck size={18} />} value={siteSettings.consentTitle} label="체크 상태 기록" />
-            <Metric icon={<BarChart3 size={18} />} value="유입 링크" label="광고별 분리" />
-          </div>
-          <a className="secondary-link" href="/admin">
-            광고 DB 관리 열기
-            <ExternalLink size={17} />
-          </a>
-        </aside>
       </section>
     </main>
   );
