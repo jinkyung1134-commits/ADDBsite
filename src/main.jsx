@@ -25,6 +25,28 @@ import {
 import "./styles.css";
 
 const openChatUrl = import.meta.env.VITE_OPEN_CHAT_URL || "";
+const defaultSiteSettings = {
+  kicker: "선착순 안내방 신청",
+  title: "무료 안내방 신청",
+  videoBadge: "상세 안내 공개",
+  videoTitle: "신청 후 안내방에서 확인하세요",
+  countdownLabel: "신청 마감까지",
+  countdownValue: "오늘 마감",
+  peopleLabel: "현재 신청 대기",
+  peopleValue: "278명",
+  nameLabel: "성함",
+  namePlaceholder: "예시) 홍길동",
+  phoneLabel: "연락처",
+  phonePlaceholder: "예시) 01012345678 (- 제외)",
+  consentTitle: "정보제공동의",
+  consentText: "신청 시, 개인정보 수집 및 이용에 동의한 것으로 간주됩니다.",
+  submitText: "지금 신청하기",
+  secureNote: "입력한 정보는 안전하게 저장됩니다.",
+  successTitle: "신청이 완료되었습니다.",
+  successText: "{name}님, 안내방 초대 정보를 전송해드릴게요.",
+  sideTitle: "소재별 문구를 관리자에서 바로 수정할 수 있습니다.",
+  sideText: "광고 링크로 들어온 신청 데이터는 관리자 화면에 저장되고, 랜딩 문구는 설정 탭에서 바꿀 수 있습니다.",
+};
 
 function App() {
   const isAdmin = window.location.pathname.startsWith("/admin");
@@ -51,6 +73,7 @@ function LeadPage() {
     phone: "",
     consent: true,
   });
+  const [siteSettings, setSiteSettings] = useState(defaultSiteSettings);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [savedLead, setSavedLead] = useState(null);
@@ -60,6 +83,27 @@ function LeadPage() {
   const sourcePath = `${window.location.pathname}${window.location.search}`;
   const phoneDigits = form.phone.replace(/[^\d]/g, "");
   const canSubmit = form.name.trim().length >= 2 && /^01\d{8,9}$/.test(phoneDigits) && form.consent;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadSiteSettings() {
+      try {
+        const response = await fetch("/api/site-settings");
+        const payload = await response.json();
+        if (isMounted && payload.settings) {
+          setSiteSettings({ ...defaultSiteSettings, ...payload.settings });
+        }
+      } catch {
+        if (isMounted) setSiteSettings(defaultSiteSettings);
+      }
+    }
+
+    loadSiteSettings();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   async function submitLead(event) {
     event.preventDefault();
@@ -101,57 +145,46 @@ function LeadPage() {
     <main className="lead-page">
       <section className="lead-stage" aria-label="광고 DB 신청 페이지">
         <div className="phone-frame">
-          <div className="phone-top">
-            <span>9:41</span>
-            <div className="phone-bars" aria-hidden="true">
-              <i />
-              <i />
-              <i />
-            </div>
-          </div>
-
           <div className="lead-content">
-            <Brand />
-
             <div className="lead-heading">
-              <p>라이브 시작 전 선착순 초대</p>
-              <h1>테무 위탁 판매 프로젝트</h1>
+              <p>{siteSettings.kicker}</p>
+              <h1>{siteSettings.title}</h1>
             </div>
 
-            <VideoPanel />
+            <VideoPanel settings={siteSettings} />
 
             <div className="live-row" aria-label="라이브 현황">
               <div>
                 <Flame size={19} />
-                <span>라이브 시작까지</span>
-                <strong>01일 13시 48분</strong>
+                <span>{siteSettings.countdownLabel}</span>
+                <strong>{siteSettings.countdownValue}</strong>
               </div>
               <div>
                 <Users size={19} />
-                <span>현재 대기 인원</span>
-                <strong>278명</strong>
+                <span>{siteSettings.peopleLabel}</span>
+                <strong>{siteSettings.peopleValue}</strong>
               </div>
             </div>
 
             <form className="lead-form" onSubmit={submitLead}>
               <label>
-                <span>성함 <b>*</b></span>
+                <span>{siteSettings.nameLabel} <b>*</b></span>
                 <input
                   autoComplete="name"
                   name="name"
-                  placeholder="예시) 홍길동"
+                  placeholder={siteSettings.namePlaceholder}
                   value={form.name}
                   onChange={(event) => updateField("name", event.target.value)}
                 />
               </label>
 
               <label>
-                <span>연락처 <b>*</b></span>
+                <span>{siteSettings.phoneLabel} <b>*</b></span>
                 <input
                   autoComplete="tel"
                   inputMode="numeric"
                   name="phone"
-                  placeholder="예시) 01012345678 (- 제외)"
+                  placeholder={siteSettings.phonePlaceholder}
                   value={form.phone}
                   onChange={(event) => updateField("phone", event.target.value)}
                 />
@@ -164,43 +197,35 @@ function LeadPage() {
                   onChange={(event) => updateField("consent", event.target.checked)}
                 />
                 <span>
-                  <strong>정보제공동의</strong>
-                  <small>신청 시, 개인정보 수집 및 이용에 동의한 것으로 간주됩니다.</small>
+                  <strong>{siteSettings.consentTitle}</strong>
+                  <small>{siteSettings.consentText}</small>
                 </span>
               </label>
 
               {error ? <p className="form-error">{error}</p> : null}
 
               <button className="primary-button" disabled={!canSubmit || status === "submitting"} type="submit">
-                {status === "submitting" ? "저장 중..." : "오픈채팅 대기방 접속"}
+                {status === "submitting" ? "저장 중..." : siteSettings.submitText}
                 <ArrowRight size={20} />
               </button>
 
               <p className="secure-note">
                 <LockKeyhole size={14} />
-                입력한 정보는 안전하게 저장됩니다.
+                {siteSettings.secureNote}
               </p>
             </form>
 
-            {status === "success" ? (
-              <SuccessCard lead={savedLead} />
-            ) : (
-              <div className="source-card">
-                <LinkIcon size={16} />
-                <span>{sourcePath}</span>
-              </div>
-            )}
+            {status === "success" ? <SuccessCard lead={savedLead} settings={siteSettings} /> : null}
           </div>
         </div>
 
         <aside className="lead-side-panel" aria-label="광고 운영 요약">
-          <Brand />
-          <h2>광고 링크만 바꿔도 유입 경로가 자동으로 남습니다.</h2>
-          <p>영상 설명, 스토리, 릴스 CTA에 이 주소를 연결하면 신청 데이터가 관리자 화면으로 모입니다.</p>
+          <h2>{siteSettings.sideTitle}</h2>
+          <p>{siteSettings.sideText}</p>
           <div className="side-grid">
-            <Metric icon={<User size={18} />} value="성함" label="필수 입력" />
-            <Metric icon={<Phone size={18} />} value="연락처" label="숫자만 저장" />
-            <Metric icon={<ShieldCheck size={18} />} value="동의" label="체크 상태 기록" />
+            <Metric icon={<User size={18} />} value={siteSettings.nameLabel} label="필수 입력" />
+            <Metric icon={<Phone size={18} />} value={siteSettings.phoneLabel} label="숫자만 저장" />
+            <Metric icon={<ShieldCheck size={18} />} value={siteSettings.consentTitle} label="체크 상태 기록" />
             <Metric icon={<BarChart3 size={18} />} value="유입 링크" label="광고별 분리" />
           </div>
           <a className="secondary-link" href="/admin">
@@ -213,7 +238,7 @@ function LeadPage() {
   );
 }
 
-function VideoPanel() {
+function VideoPanel({ settings }) {
   return (
     <article className="video-panel">
       <img src="/images/ad-video-thumbnail.png" alt="광고 영상 썸네일" />
@@ -222,8 +247,8 @@ function VideoPanel() {
         <Play size={28} fill="currentColor" />
       </button>
       <div className="video-copy">
-        <span>실전 노하우 공개</span>
-        <strong>누구나 따라하는 위탁 판매 루틴</strong>
+        <span>{settings.videoBadge}</span>
+        <strong>{settings.videoTitle}</strong>
       </div>
     </article>
   );
@@ -239,15 +264,17 @@ function Metric({ icon, value, label }) {
   );
 }
 
-function SuccessCard({ lead }) {
+function SuccessCard({ lead, settings }) {
+  const message = settings.successText.replace("{name}", lead?.name || "신청자");
+
   return (
     <div className="success-card" role="status">
       <span className="success-icon">
         <Check size={23} />
       </span>
       <div>
-        <strong>신청이 완료되었습니다.</strong>
-        <p>{lead?.name || "신청자"}님, 오픈채팅 초대 정보를 전송해드릴게요.</p>
+        <strong>{settings.successTitle}</strong>
+        <p>{message}</p>
         {openChatUrl ? (
           <a href={openChatUrl} target="_blank" rel="noreferrer">
             대기방 바로가기
@@ -531,25 +558,155 @@ function StatsPanel({ leads, uniqueSources }) {
 }
 
 function SettingsPanel() {
+  const [settings, setSettings] = useState(defaultSiteSettings);
+  const [saveState, setSaveState] = useState("idle");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadSettings() {
+      try {
+        const response = await fetch("/api/site-settings");
+        const payload = await response.json();
+        if (isMounted && payload.settings) {
+          setSettings({ ...defaultSiteSettings, ...payload.settings });
+        }
+      } catch {
+        if (isMounted) setError("신청 페이지 설정을 불러오지 못했습니다.");
+      }
+    }
+
+    loadSettings();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  function updateSetting(field, value) {
+    setSettings((current) => ({ ...current, [field]: value }));
+  }
+
+  async function saveSettings(event) {
+    event.preventDefault();
+    setSaveState("saving");
+    setError("");
+
+    try {
+      const response = await fetch("/api/site-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settings }),
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error || "설정을 저장하지 못했습니다.");
+      }
+
+      setSettings({ ...defaultSiteSettings, ...payload.settings });
+      setSaveState("saved");
+      window.setTimeout(() => setSaveState("idle"), 1600);
+    } catch (requestError) {
+      setError(requestError.message);
+      setSaveState("idle");
+    }
+  }
+
   return (
     <section className="table-panel compact-panel">
       <div className="table-toolbar">
         <div>
           <h2>설정</h2>
-          <span>연동 상태</span>
+          <span>신청 페이지 문구 수정</span>
         </div>
       </div>
-      <div className="settings-list">
-        <div>
-          <strong>오픈채팅 URL</strong>
-          <small>{openChatUrl || "VITE_OPEN_CHAT_URL 미설정"}</small>
+      <form className="settings-form" onSubmit={saveSettings}>
+        <div className="settings-group">
+          <h3>상단 문구</h3>
+          <EditableField label="작은 제목" value={settings.kicker} onChange={(value) => updateSetting("kicker", value)} />
+          <EditableField label="큰 제목" value={settings.title} onChange={(value) => updateSetting("title", value)} />
         </div>
-        <div>
-          <strong>데이터 저장 위치</strong>
-          <small>data/leads.json</small>
+
+        <div className="settings-group">
+          <h3>영상 영역</h3>
+          <EditableField label="영상 배지" value={settings.videoBadge} onChange={(value) => updateSetting("videoBadge", value)} />
+          <EditableField label="영상 제목" value={settings.videoTitle} onChange={(value) => updateSetting("videoTitle", value)} />
         </div>
-      </div>
+
+        <div className="settings-group two-column">
+          <h3>숫자 영역</h3>
+          <EditableField label="왼쪽 라벨" value={settings.countdownLabel} onChange={(value) => updateSetting("countdownLabel", value)} />
+          <EditableField label="왼쪽 값" value={settings.countdownValue} onChange={(value) => updateSetting("countdownValue", value)} />
+          <EditableField label="오른쪽 라벨" value={settings.peopleLabel} onChange={(value) => updateSetting("peopleLabel", value)} />
+          <EditableField label="오른쪽 값" value={settings.peopleValue} onChange={(value) => updateSetting("peopleValue", value)} />
+        </div>
+
+        <div className="settings-group two-column">
+          <h3>입력 폼</h3>
+          <EditableField label="이름 라벨" value={settings.nameLabel} onChange={(value) => updateSetting("nameLabel", value)} />
+          <EditableField label="이름 안내문" value={settings.namePlaceholder} onChange={(value) => updateSetting("namePlaceholder", value)} />
+          <EditableField label="연락처 라벨" value={settings.phoneLabel} onChange={(value) => updateSetting("phoneLabel", value)} />
+          <EditableField label="연락처 안내문" value={settings.phonePlaceholder} onChange={(value) => updateSetting("phonePlaceholder", value)} />
+          <EditableField label="동의 제목" value={settings.consentTitle} onChange={(value) => updateSetting("consentTitle", value)} />
+          <EditableField label="동의 문구" rows={3} value={settings.consentText} onChange={(value) => updateSetting("consentText", value)} />
+        </div>
+
+        <div className="settings-group">
+          <h3>버튼과 완료 문구</h3>
+          <EditableField label="버튼 문구" value={settings.submitText} onChange={(value) => updateSetting("submitText", value)} />
+          <EditableField label="보안 안내" value={settings.secureNote} onChange={(value) => updateSetting("secureNote", value)} />
+          <EditableField label="완료 제목" value={settings.successTitle} onChange={(value) => updateSetting("successTitle", value)} />
+          <EditableField
+            label="완료 문구"
+            rows={3}
+            value={settings.successText}
+            helper="{name}을 넣으면 신청자 이름으로 바뀝니다."
+            onChange={(value) => updateSetting("successText", value)}
+          />
+        </div>
+
+        <div className="settings-group">
+          <h3>데스크톱 보조 문구</h3>
+          <EditableField label="보조 제목" value={settings.sideTitle} onChange={(value) => updateSetting("sideTitle", value)} />
+          <EditableField label="보조 설명" rows={3} value={settings.sideText} onChange={(value) => updateSetting("sideText", value)} />
+        </div>
+
+        <div className="settings-list">
+          <div>
+            <strong>오픈채팅 URL</strong>
+            <small>{openChatUrl || "VITE_OPEN_CHAT_URL 미설정"}</small>
+          </div>
+          <div>
+            <strong>데이터 저장 위치</strong>
+            <small>data/leads.json</small>
+          </div>
+        </div>
+
+        {error ? <p className="form-error">{error}</p> : null}
+
+        <div className="settings-actions">
+          <button className="download-button" type="submit" disabled={saveState === "saving"}>
+            <Settings size={17} />
+            {saveState === "saving" ? "저장 중..." : saveState === "saved" ? "저장 완료" : "신청 페이지 저장"}
+          </button>
+        </div>
+      </form>
     </section>
+  );
+}
+
+function EditableField({ helper, label, onChange, rows = 1, value }) {
+  return (
+    <label className="editable-field">
+      <span>{label}</span>
+      {rows > 1 ? (
+        <textarea rows={rows} value={value} onChange={(event) => onChange(event.target.value)} />
+      ) : (
+        <input value={value} onChange={(event) => onChange(event.target.value)} />
+      )}
+      {helper ? <small>{helper}</small> : null}
+    </label>
   );
 }
 
