@@ -17,7 +17,7 @@ const port = Number(process.env.PORT || 8787);
 const adminUser = process.env.ADMIN_USER || "admin";
 const adminPassword = process.env.ADMIN_PASSWORD || "";
 
-app.use(express.json({ limit: "8mb" }));
+app.use(express.json({ limit: "60mb" }));
 
 const defaultSiteSettings = {
   kicker: "선착순 안내방 신청",
@@ -40,6 +40,10 @@ const defaultSiteSettings = {
   successText: "{name}님, 안내방 초대 정보를 전송해드릴게요.",
   sideTitle: "소재별 문구를 관리자에서 바로 수정할 수 있습니다.",
   sideText: "광고 링크로 들어온 신청 데이터는 관리자 화면에 저장되고, 랜딩 문구는 설정 탭에서 바꿀 수 있습니다.",
+  pageBackground: "#08090d",
+  pageTextColor: "#f8f9ff",
+  accentColor: "#7c4dff",
+  fontFamily: "Pretendard, Inter, system-ui, sans-serif",
   blocks: [
     {
       id: "intro",
@@ -47,10 +51,17 @@ const defaultSiteSettings = {
       kicker: "선착순 안내방 신청",
       title: "무료 안내방 신청",
       body: "",
+      titleSize: "31",
+      titleColor: "#ffffff",
+      bodySize: "15",
+      bodyColor: "#a9adba",
+      fontFamily: "inherit",
     },
     {
       id: "main-photo",
       type: "photo",
+      mediaType: "image",
+      mediaSrc: "/images/ad-video-thumbnail.png",
       imageSrc: "/images/ad-video-thumbnail.png",
       badge: "상세 안내 공개",
       title: "신청 후 안내방에서 확인하세요",
@@ -114,10 +125,15 @@ function normalizeBlocks(blocks) {
       const id = sanitizeText(block.id, `block-${index}`, 80);
 
       if (block.type === "photo") {
+        const mediaType = block.mediaType === "video" ? "video" : "image";
+        const mediaFallback = mediaType === "video" ? "" : "/images/ad-video-thumbnail.png";
+        const mediaSrc = sanitizeText(block.mediaSrc || block.imageSrc, mediaFallback, 55_000_000);
         return {
           id,
           type: "photo",
-          imageSrc: sanitizeText(block.imageSrc, "/images/ad-video-thumbnail.png", 7_000_000),
+          mediaType,
+          mediaSrc,
+          imageSrc: mediaSrc,
           badge: sanitizeText(block.badge, "상세 안내 공개", 120),
           title: sanitizeText(block.title, "신청 후 안내방에서 확인하세요", 200),
         };
@@ -159,6 +175,11 @@ function normalizeBlocks(blocks) {
         kicker: sanitizeText(block.kicker, "", 120),
         title: sanitizeText(block.title, "새 문구", 200),
         body: sanitizeText(block.body, "", 800),
+        titleSize: sanitizeText(block.titleSize, "31", 4),
+        titleColor: sanitizeText(block.titleColor, "#ffffff", 24),
+        bodySize: sanitizeText(block.bodySize, "15", 4),
+        bodyColor: sanitizeText(block.bodyColor, "#a9adba", 24),
+        fontFamily: sanitizeText(block.fontFamily, "inherit", 180),
       };
     })
     .slice(0, 20);

@@ -50,6 +50,10 @@ const defaultSiteSettings = {
   successText: "{name}님, 안내방 초대 정보를 전송해드릴게요.",
   sideTitle: "소재별 문구를 관리자에서 바로 수정할 수 있습니다.",
   sideText: "광고 링크로 들어온 신청 데이터는 관리자 화면에 저장되고, 랜딩 문구는 설정 탭에서 바꿀 수 있습니다.",
+  pageBackground: "#08090d",
+  pageTextColor: "#f8f9ff",
+  accentColor: "#7c4dff",
+  fontFamily: "Pretendard, Inter, system-ui, sans-serif",
   blocks: [
     {
       id: "intro",
@@ -57,10 +61,17 @@ const defaultSiteSettings = {
       kicker: "선착순 안내방 신청",
       title: "무료 안내방 신청",
       body: "",
+      titleSize: "31",
+      titleColor: "#ffffff",
+      bodySize: "15",
+      bodyColor: "#a9adba",
+      fontFamily: "inherit",
     },
     {
       id: "main-photo",
       type: "photo",
+      mediaType: "image",
+      mediaSrc: "/images/ad-video-thumbnail.png",
       imageSrc: "/images/ad-video-thumbnail.png",
       badge: "상세 안내 공개",
       title: "신청 후 안내방에서 확인하세요",
@@ -106,13 +117,16 @@ function mergeSiteSettings(settings) {
 function createBlock(type) {
   const id = `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-  if (type === "photo") {
+  if (type === "photo" || type === "video") {
+    const isVideo = type === "video";
     return {
       id,
       type: "photo",
-      imageSrc: "/images/ad-video-thumbnail.png",
-      badge: "사진 설명",
-      title: "사진 제목을 입력하세요",
+      mediaType: isVideo ? "video" : "image",
+      mediaSrc: isVideo ? "" : "/images/ad-video-thumbnail.png",
+      imageSrc: isVideo ? "" : "/images/ad-video-thumbnail.png",
+      badge: isVideo ? "동영상 설명" : "사진 설명",
+      title: isVideo ? "동영상 제목을 입력하세요" : "사진 제목을 입력하세요",
     };
   }
 
@@ -139,6 +153,27 @@ function createBlock(type) {
     kicker: "",
     title: "새 글 제목",
     body: "설명 문구를 입력하세요.",
+    titleSize: "31",
+    titleColor: "#ffffff",
+    bodySize: "15",
+    bodyColor: "#a9adba",
+    fontFamily: "inherit",
+  };
+}
+
+const fontOptions = [
+  { label: "기본 고딕", value: "Pretendard, Inter, system-ui, sans-serif" },
+  { label: "굵은 고딕", value: "'Arial Black', 'Malgun Gothic', sans-serif" },
+  { label: "부드러운 고딕", value: "'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif" },
+  { label: "명조", value: "Georgia, 'Noto Serif KR', serif" },
+];
+
+function getThemeStyle(settings) {
+  return {
+    "--page-bg": settings.pageBackground || defaultSiteSettings.pageBackground,
+    "--page-text": settings.pageTextColor || defaultSiteSettings.pageTextColor,
+    "--accent": settings.accentColor || defaultSiteSettings.accentColor,
+    fontFamily: settings.fontFamily || defaultSiteSettings.fontFamily,
   };
 }
 
@@ -236,7 +271,7 @@ function LeadPage() {
   }
 
   return (
-    <main className="lead-page">
+    <main className="lead-page" style={getThemeStyle(siteSettings)}>
       <section className="lead-stage" aria-label="광고 DB 신청 페이지">
         <div className="phone-frame">
           <div className="lead-content">
@@ -283,27 +318,46 @@ function LeadPage() {
 }
 
 function TextBlock({ block }) {
+  const titleStyle = {
+    color: block.titleColor || "#ffffff",
+    fontFamily: block.fontFamily === "inherit" ? "inherit" : block.fontFamily,
+    fontSize: `${Number(block.titleSize) || 31}px`,
+  };
+  const bodyStyle = {
+    color: block.bodyColor || "#a9adba",
+    fontFamily: block.fontFamily === "inherit" ? "inherit" : block.fontFamily,
+    fontSize: `${Number(block.bodySize) || 15}px`,
+  };
+
   return (
     <div className="lead-heading">
       {block.kicker ? <p>{block.kicker}</p> : null}
-      <h1>{block.title}</h1>
-      {block.body ? <p className="lead-body-copy">{block.body}</p> : null}
+      <h1 style={titleStyle}>{block.title}</h1>
+      {block.body ? <p className="lead-body-copy" style={bodyStyle}>{block.body}</p> : null}
     </div>
   );
 }
 
 function PhotoBlock({ block }) {
+  const mediaSrc = block.mediaSrc || block.imageSrc || "/images/ad-video-thumbnail.png";
+  const isVideo = block.mediaType === "video";
+
   return (
-    <article className="video-panel">
-      <img src={block.imageSrc || "/images/ad-video-thumbnail.png"} alt="신청 페이지 사진" />
-      <div className="video-shade" />
-      <button className="play-button" type="button" aria-label="영상 재생">
-        <Play size={28} fill="currentColor" />
-      </button>
-      <div className="video-copy">
-        {block.badge ? <span>{block.badge}</span> : null}
-        {block.title ? <strong>{block.title}</strong> : null}
-      </div>
+    <article className={`video-panel ${isVideo ? "video-media" : ""}`}>
+      {isVideo ? (
+        <video src={mediaSrc} controls playsInline preload="metadata" />
+      ) : (
+        <img src={mediaSrc} alt="신청 페이지 사진" />
+      )}
+      {!isVideo ? (
+        <>
+          <div className="video-shade" />
+          <div className="video-copy">
+            {block.badge ? <span>{block.badge}</span> : null}
+            {block.title ? <strong>{block.title}</strong> : null}
+          </div>
+        </>
+      ) : null}
     </article>
   );
 }
@@ -714,14 +768,6 @@ function SettingsPanel() {
   }, []);
 
   function addBlock(type) {
-    if (type === "form" && settings.blocks.some((block) => block.type === "form")) {
-      const formBlock = settings.blocks.find((block) => block.type === "form");
-      setSelectedBlockId(formBlock.id);
-      setError("신청칸은 이미 있습니다. 기존 신청칸을 선택했어요.");
-      window.setTimeout(() => setError(""), 1800);
-      return;
-    }
-
     const block = createBlock(type);
     setSettings((current) => ({ ...current, blocks: [...current.blocks, block] }));
     setSelectedBlockId(block.id);
@@ -755,13 +801,13 @@ function SettingsPanel() {
 
   async function updatePhotoFile(blockId, file) {
     if (!file) return;
-    if (file.size > 4 * 1024 * 1024) {
-      setError("사진은 4MB 이하 파일로 올려주세요.");
+    if (file.size > 40 * 1024 * 1024) {
+      setError("파일은 40MB 이하로 올려주세요.");
       return;
     }
 
     const imageSrc = await readFileAsDataUrl(file);
-    updateBlock(blockId, { imageSrc });
+    updateBlock(blockId, { imageSrc, mediaSrc: imageSrc });
   }
 
   async function saveSettings() {
@@ -805,6 +851,10 @@ function SettingsPanel() {
             <ImagePlus size={17} />
             사진 추가
           </button>
+          <button className="ghost-button" type="button" onClick={() => addBlock("video")}>
+            <Play size={17} />
+            동영상 추가
+          </button>
           <button className="ghost-button" type="button" onClick={() => addBlock("form")}>
             <Plus size={17} />
             신청칸
@@ -813,8 +863,10 @@ function SettingsPanel() {
       </div>
 
       <div className="page-builder">
+        <ThemeEditor settings={settings} setSettings={setSettings} />
+
         <div className="builder-preview">
-          <div className="editor-preview-surface">
+          <div className="editor-preview-surface" style={getThemeStyle(settings)}>
             {settings.blocks.map((block) => (
               <EditablePreviewBlock
                 block={block}
@@ -854,6 +906,40 @@ function SettingsPanel() {
   );
 }
 
+function ThemeEditor({ settings, setSettings }) {
+  function updateTheme(field, value) {
+    setSettings((current) => ({ ...current, [field]: value }));
+  }
+
+  return (
+    <aside className="theme-editor" aria-label="신청 페이지 디자인">
+      <h3>디자인</h3>
+      <label>
+        <span>배경 색상</span>
+        <input type="color" value={settings.pageBackground} onChange={(event) => updateTheme("pageBackground", event.target.value)} />
+      </label>
+      <label>
+        <span>기본 글 색상</span>
+        <input type="color" value={settings.pageTextColor} onChange={(event) => updateTheme("pageTextColor", event.target.value)} />
+      </label>
+      <label>
+        <span>버튼 색상</span>
+        <input type="color" value={settings.accentColor} onChange={(event) => updateTheme("accentColor", event.target.value)} />
+      </label>
+      <label>
+        <span>글꼴</span>
+        <select value={settings.fontFamily} onChange={(event) => updateTheme("fontFamily", event.target.value)}>
+          {fontOptions.map((font) => (
+            <option key={font.value} value={font.value}>
+              {font.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    </aside>
+  );
+}
+
 function EditablePreviewBlock({ block, isSelected, onFileChange, onRemove, onSelect, onStatsChange, onUpdate }) {
   return (
     <section className={`preview-edit-block ${isSelected ? "selected" : ""}`} onClick={onSelect}>
@@ -866,13 +952,28 @@ function EditablePreviewBlock({ block, isSelected, onFileChange, onRemove, onSel
 
       {block.type === "photo" ? (
         <div className="preview-photo-editor">
-          <img src={block.imageSrc || "/images/ad-video-thumbnail.png"} alt="편집 중인 사진" />
+          {block.mediaType === "video" ? (
+            <video src={block.mediaSrc || block.imageSrc} controls playsInline preload="metadata" />
+          ) : (
+            <img src={block.mediaSrc || block.imageSrc || "/images/ad-video-thumbnail.png"} alt="편집 중인 사진" />
+          )}
+          <label className="preview-select-field">
+            <span>미디어 종류</span>
+            <select value={block.mediaType || "image"} onChange={(event) => onUpdate({ mediaType: event.target.value })}>
+              <option value="image">사진</option>
+              <option value="video">동영상</option>
+            </select>
+          </label>
           <label className="photo-upload-button">
             <ImagePlus size={16} />
-            사진 선택
-            <input accept="image/*" type="file" onChange={(event) => onFileChange(event.target.files?.[0])} />
+            {block.mediaType === "video" ? "동영상 선택" : "사진 선택"}
+            <input accept={block.mediaType === "video" ? "video/*" : "image/*"} type="file" onChange={(event) => onFileChange(event.target.files?.[0])} />
           </label>
-          <input value={block.imageSrc} onChange={(event) => onUpdate({ imageSrc: event.target.value })} placeholder="사진 주소 또는 업로드 이미지" />
+          <input
+            value={block.mediaSrc || block.imageSrc || ""}
+            onChange={(event) => onUpdate({ mediaSrc: event.target.value, imageSrc: event.target.value })}
+            placeholder="사진/동영상 주소 또는 업로드 파일"
+          />
           <input value={block.badge} onChange={(event) => onUpdate({ badge: event.target.value })} placeholder="사진 위 작은 문구" />
           <textarea rows={2} value={block.title} onChange={(event) => onUpdate({ title: event.target.value })} placeholder="사진 위 큰 문구" />
         </div>
@@ -906,8 +1007,46 @@ function EditablePreviewBlock({ block, isSelected, onFileChange, onRemove, onSel
       {block.type === "text" ? (
         <div className="preview-text-editor">
           <input value={block.kicker} onChange={(event) => onUpdate({ kicker: event.target.value })} placeholder="작은 제목" />
-          <textarea className="preview-title-input" rows={2} value={block.title} onChange={(event) => onUpdate({ title: event.target.value })} placeholder="큰 제목" />
+          <textarea
+            className="preview-title-input"
+            rows={2}
+            style={{
+              color: block.titleColor,
+              fontFamily: block.fontFamily === "inherit" ? "inherit" : block.fontFamily,
+              fontSize: `${Number(block.titleSize) || 31}px`,
+            }}
+            value={block.title}
+            onChange={(event) => onUpdate({ title: event.target.value })}
+            placeholder="큰 제목"
+          />
           <textarea rows={3} value={block.body} onChange={(event) => onUpdate({ body: event.target.value })} placeholder="설명 문구" />
+          <div className="style-grid">
+            <label>
+              <span>제목 크기</span>
+              <input type="number" min="16" max="72" value={block.titleSize || "31"} onChange={(event) => onUpdate({ titleSize: event.target.value })} />
+            </label>
+            <label>
+              <span>제목 색상</span>
+              <input type="color" value={block.titleColor || "#ffffff"} onChange={(event) => onUpdate({ titleColor: event.target.value })} />
+            </label>
+            <label>
+              <span>설명 크기</span>
+              <input type="number" min="11" max="36" value={block.bodySize || "15"} onChange={(event) => onUpdate({ bodySize: event.target.value })} />
+            </label>
+            <label>
+              <span>설명 색상</span>
+              <input type="color" value={block.bodyColor || "#a9adba"} onChange={(event) => onUpdate({ bodyColor: event.target.value })} />
+            </label>
+            <label className="wide">
+              <span>글꼴</span>
+              <select value={block.fontFamily || "inherit"} onChange={(event) => onUpdate({ fontFamily: event.target.value })}>
+                <option value="inherit">페이지 기본</option>
+                {fontOptions.map((font) => (
+                  <option key={font.value} value={font.value}>{font.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
       ) : null}
     </section>
