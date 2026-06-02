@@ -51,6 +51,9 @@ const defaultSiteSettings = {
   pageTextColor: "#f8f9ff",
   accentColor: "#7c4dff",
   fontFamily: "Pretendard, Inter, system-ui, sans-serif",
+  kakaoFloatingImage: "",
+  kakaoOpenChatUrl: "",
+  kakaoFloatingAlt: "카카오톡 오픈채팅 바로가기",
   blocks: [
     {
       id: "intro",
@@ -220,7 +223,7 @@ function LeadPage() {
 
     async function loadSiteSettings() {
       try {
-        const response = await fetch("/api/site-settings");
+        const response = await fetch("/api/site-settings", { cache: "no-store" });
         const payload = await response.json();
         if (isMounted && payload.settings) {
           setSiteSettings(mergeSiteSettings(payload.settings));
@@ -272,8 +275,10 @@ function LeadPage() {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
+  const hasKakaoFloatingLink = siteSettings.kakaoFloatingImage && siteSettings.kakaoOpenChatUrl;
+
   return (
-    <main className="lead-page" style={getThemeStyle(siteSettings)}>
+    <main className={`lead-page ${hasKakaoFloatingLink ? "has-floating-kakao" : ""}`} style={getThemeStyle(siteSettings)}>
       <section className="lead-stage" aria-label="광고 DB 신청 페이지">
         <div className="phone-frame">
           <div className="lead-content">
@@ -300,6 +305,11 @@ function LeadPage() {
           </div>
         </div>
       </section>
+      {hasKakaoFloatingLink ? (
+        <a className="kakao-floating-link" href={siteSettings.kakaoOpenChatUrl} target="_blank" rel="noreferrer">
+          <img src={siteSettings.kakaoFloatingImage} alt={siteSettings.kakaoFloatingAlt || "카카오톡 오픈채팅 바로가기"} />
+        </a>
+      ) : null}
     </main>
   );
 }
@@ -727,7 +737,7 @@ function SettingsPanel() {
 
     async function loadSettings() {
       try {
-        const response = await fetch("/api/site-settings");
+        const response = await fetch("/api/site-settings", { cache: "no-store" });
         const payload = await response.json();
         if (isMounted && payload.settings) {
           const merged = mergeSiteSettings(payload.settings);
@@ -788,6 +798,17 @@ function SettingsPanel() {
     updateBlock(blockId, { imageSrc, mediaSrc: imageSrc });
   }
 
+  async function updateKakaoFloatingFile(file) {
+    if (!file) return;
+    if (file.size > 12 * 1024 * 1024) {
+      setError("카카오톡 고정 이미지는 12MB 이하로 올려주세요.");
+      return;
+    }
+
+    const imageSrc = await readFileAsDataUrl(file);
+    setSettings((current) => ({ ...current, kakaoFloatingImage: imageSrc }));
+  }
+
   async function saveSettings() {
     setSaveState("saving");
     setError("");
@@ -841,7 +862,14 @@ function SettingsPanel() {
       </div>
 
       <div className="page-builder">
-        <ThemeEditor settings={settings} setSettings={setSettings} />
+        <div className="builder-side-controls">
+          <ThemeEditor settings={settings} setSettings={setSettings} />
+          <KakaoFloatingEditor
+            onFileChange={updateKakaoFloatingFile}
+            settings={settings}
+            setSettings={setSettings}
+          />
+        </div>
 
         <div className="builder-preview">
           <div className="editor-preview-surface" style={getThemeStyle(settings)}>
@@ -914,6 +942,41 @@ function ThemeEditor({ settings, setSettings }) {
           ))}
         </select>
       </label>
+    </aside>
+  );
+}
+
+function KakaoFloatingEditor({ onFileChange, settings, setSettings }) {
+  function updateKakao(field, value) {
+    setSettings((current) => ({ ...current, [field]: value }));
+  }
+
+  return (
+    <aside className="kakao-floating-editor" aria-label="카카오톡 하단 고정 이미지">
+      <h3>카카오톡 고정 이미지</h3>
+      <p>권장 이미지 크기: 720 x 160px</p>
+      <label>
+        <span>오픈채팅 링크</span>
+        <input
+          value={settings.kakaoOpenChatUrl || ""}
+          onChange={(event) => updateKakao("kakaoOpenChatUrl", event.target.value)}
+          placeholder="https://open.kakao.com/o/..."
+        />
+      </label>
+      <label className="photo-upload-button">
+        <ImagePlus size={16} />
+        이미지 업로드
+        <input accept="image/*" type="file" onChange={(event) => onFileChange(event.target.files?.[0])} />
+      </label>
+      {settings.kakaoFloatingImage ? (
+        <>
+          <img className="floating-image-preview" src={settings.kakaoFloatingImage} alt="카카오톡 고정 이미지 미리보기" />
+          <button className="ghost-button" type="button" onClick={() => updateKakao("kakaoFloatingImage", "")}>
+            <Trash2 size={15} />
+            이미지 삭제
+          </button>
+        </>
+      ) : null}
     </aside>
   );
 }

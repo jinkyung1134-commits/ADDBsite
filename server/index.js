@@ -44,6 +44,9 @@ const defaultSiteSettings = {
   pageTextColor: "#f8f9ff",
   accentColor: "#7c4dff",
   fontFamily: "Pretendard, Inter, system-ui, sans-serif",
+  kakaoFloatingImage: "",
+  kakaoOpenChatUrl: "",
+  kakaoFloatingAlt: "카카오톡 오픈채팅 바로가기",
   blocks: [
     {
       id: "intro",
@@ -116,6 +119,12 @@ function sanitizeText(value, fallback = "", maxLength = 500) {
   const text = String(value ?? fallback).trim();
   return (text || fallback).slice(0, maxLength);
 }
+
+const siteSettingLimits = {
+  kakaoFloatingImage: 18_000_000,
+  kakaoOpenChatUrl: 2_000,
+  kakaoFloatingAlt: 160,
+};
 
 function normalizeBlocks(blocks) {
   if (!Array.isArray(blocks) || !blocks.length) return defaultSiteSettings.blocks;
@@ -190,7 +199,7 @@ function normalizeSettings(input) {
     ...Object.fromEntries(
       Object.entries(defaultSiteSettings)
         .filter(([key]) => key !== "blocks")
-        .map(([key, fallback]) => [key, sanitizeText(input?.[key], fallback)])
+        .map(([key, fallback]) => [key, sanitizeText(input?.[key], fallback, siteSettingLimits[key] || 500)])
     ),
     blocks: normalizeBlocks(input?.blocks),
   };
@@ -254,6 +263,7 @@ app.get("/api/admin-config", (_req, res) => {
 });
 
 app.get("/api/site-settings", async (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
   res.json({ settings: await readSiteSettings() });
 });
 

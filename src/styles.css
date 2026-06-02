@@ -149,6 +149,28 @@ button:disabled {
   border: 1px solid rgba(255, 255, 255, 0.09);
 }
 
+.has-floating-kakao .lead-content {
+  padding-bottom: 120px;
+}
+
+.kakao-floating-link {
+  position: fixed;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  z-index: 30;
+  width: min(430px, calc(100vw - 24px));
+  transform: translateX(-50%);
+  display: block;
+  filter: drop-shadow(0 14px 32px rgba(0, 0, 0, 0.42));
+}
+
+.kakao-floating-link img {
+  width: 100%;
+  max-height: 112px;
+  display: block;
+  object-fit: contain;
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -971,7 +993,14 @@ tbody tr:hover {
   align-items: start;
 }
 
-.theme-editor {
+.builder-side-controls {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.theme-editor,
+.kakao-floating-editor {
   min-width: 0;
   padding: 16px;
   border: 1px solid rgba(255, 255, 255, 0.09);
@@ -981,13 +1010,23 @@ tbody tr:hover {
   background: rgba(255, 255, 255, 0.035);
 }
 
-.theme-editor h3 {
+.theme-editor h3,
+.kakao-floating-editor h3 {
   margin: 0;
   color: #ffffff;
   font-size: 16px;
 }
 
+.kakao-floating-editor p {
+  margin: -3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
 .theme-editor label,
+.kakao-floating-editor label:not(.photo-upload-button),
 .preview-select-field,
 .style-grid label {
   min-width: 0;
@@ -996,6 +1035,7 @@ tbody tr:hover {
 }
 
 .theme-editor span,
+.kakao-floating-editor span,
 .preview-select-field span,
 .style-grid span {
   color: #c9cbd6;
@@ -1005,6 +1045,7 @@ tbody tr:hover {
 
 .theme-editor input,
 .theme-editor select,
+.kakao-floating-editor input,
 .preview-select-field select,
 .style-grid input,
 .style-grid select {
@@ -1022,6 +1063,14 @@ tbody tr:hover {
 .theme-editor input[type="color"],
 .style-grid input[type="color"] {
   padding: 4px;
+}
+
+.floating-image-preview {
+  width: 100%;
+  border-radius: var(--radius);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: block;
+  background: #101217;
 }
 
 .builder-preview {
@@ -1343,10 +1392,23 @@ tbody tr:hover {
     border: 0;
   }
 
+  .has-floating-kakao .lead-content {
+    padding-bottom: 96px;
+  }
+
   .video-panel {
     width: calc(100% + 36px);
     margin-left: -18px;
     margin-right: -18px;
+  }
+
+  .kakao-floating-link {
+    bottom: max(10px, env(safe-area-inset-bottom));
+    width: calc(100vw - 18px);
+  }
+
+  .kakao-floating-link img {
+    max-height: 96px;
   }
 
   .lead-heading {
