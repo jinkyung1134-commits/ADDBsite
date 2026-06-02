@@ -205,74 +205,22 @@ button:disabled {
 
 .video-panel {
   position: relative;
-  overflow: hidden;
-  aspect-ratio: 16 / 9;
-  border-radius: var(--radius);
-  border: 1px solid rgba(255, 255, 255, 0.17);
-  background: #151821;
+  overflow: visible;
+  background: transparent;
 }
 
 .video-panel img,
 .video-panel video {
   width: 100%;
-  height: 100%;
   display: block;
-  object-fit: cover;
+  height: auto;
+  object-fit: contain;
 }
 
 .video-panel video {
   position: relative;
   z-index: 1;
   background: #000000;
-}
-
-.video-shade {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(0deg, rgba(0, 0, 0, 0.68), rgba(0, 0, 0, 0) 66%);
-}
-
-.play-button {
-  position: absolute;
-  inset: 50% auto auto 50%;
-  transform: translate(-50%, -50%);
-  width: 62px;
-  height: 62px;
-  border: 0;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  color: #ffffff;
-  background: rgba(8, 9, 13, 0.66);
-  box-shadow: 0 0 0 9px rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(8px);
-}
-
-.video-copy {
-  position: absolute;
-  left: 18px;
-  right: 18px;
-  bottom: 18px;
-  display: grid;
-  gap: 6px;
-}
-
-.video-copy span {
-  width: fit-content;
-  padding: 7px 10px;
-  border-radius: 8px;
-  background: rgba(255, 138, 36, 0.9);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.video-copy strong {
-  max-width: 260px;
-  color: #ffffff;
-  font-size: 21px;
-  line-height: 1.14;
-  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.64);
 }
 
 .live-row {
@@ -1401,11 +1349,6 @@ tbody tr:hover {
 
   .lead-heading h1 {
     font-size: 28px;
-  }
-
-  .video-copy strong {
-    max-width: 230px;
-    font-size: 19px;
   }
 
   .live-row {

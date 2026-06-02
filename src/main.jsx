@@ -336,15 +336,6 @@ function PhotoBlock({ block }) {
       ) : (
         <img src={mediaSrc} alt="신청 페이지 사진" />
       )}
-      {!isVideo ? (
-        <>
-          <div className="video-shade" />
-          <div className="video-copy">
-            {block.badge ? <span>{block.badge}</span> : null}
-            {block.title ? <strong>{block.title}</strong> : null}
-          </div>
-        </>
-      ) : null}
     </article>
   );
 }
