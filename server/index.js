@@ -13,6 +13,8 @@ const distDir = path.join(rootDir, "dist");
 
 const app = express();
 const port = Number(process.env.PORT || 8787);
+const adminUser = process.env.ADMIN_USER || "admin";
+const adminPassword = process.env.ADMIN_PASSWORD || "";
 
 app.use(express.json({ limit: "64kb" }));
 
@@ -46,18 +48,45 @@ function csvEscape(value) {
   return `"${text.replaceAll('"', '""')}"`;
 }
 
+function isAdminRequest(req) {
+  if (!adminPassword) return true;
+
+  const header = String(req.headers.authorization || "");
+  const [scheme, encoded] = header.split(" ");
+  if (scheme !== "Basic" || !encoded) return false;
+
+  const decoded = Buffer.from(encoded, "base64").toString("utf8");
+  const separator = decoded.indexOf(":");
+  const username = decoded.slice(0, separator);
+  const password = decoded.slice(separator + 1);
+  return username === adminUser && password === adminPassword;
+}
+
+function requireAdmin(req, res, next) {
+  if (isAdminRequest(req)) {
+    return next();
+  }
+
+  res.setHeader("WWW-Authenticate", 'Basic realm="ADDBsite Admin"');
+  return res.status(401).send("관리자 인증이 필요합니다.");
+}
+
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
 });
 
-app.get("/api/leads", async (_req, res) => {
+app.get("/api/admin-config", (_req, res) => {
+  res.json({ adminProtected: Boolean(adminPassword), adminUser });
+});
+
+app.get("/api/leads", requireAdmin, async (_req, res) => {
   const leads = await readLeads();
   res.json({
     leads: leads.toSorted((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
   });
 });
 
-app.get("/api/leads.csv", async (_req, res) => {
+app.get("/api/leads.csv", requireAdmin, async (_req, res) => {
   const leads = await readLeads();
   const header = ["id", "name", "phone", "sourcePath", "campaign", "createdAt"];
   const rows = leads
@@ -110,6 +139,8 @@ app.post("/api/leads", async (req, res) => {
 });
 
 app.use(express.static(distDir));
+
+app.use("/admin", requireAdmin);
 
 app.use((_req, res, next) => {
   res.sendFile(path.join(distDir, "index.html"), (error) => {

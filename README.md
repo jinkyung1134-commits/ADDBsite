@@ -23,3 +23,15 @@ npm start
 ## 오픈채팅 링크
 
 `.env.example`을 참고해 `.env`에 `VITE_OPEN_CHAT_URL`을 넣으면 신청 완료 후 대기방 바로가기 버튼이 표시됩니다.
+
+## 관리자 보호
+
+공개 주소로 열 때는 서버 실행 전에 관리자 비밀번호를 환경변수로 설정하세요.
+
+```powershell
+$env:ADMIN_USER="admin"
+$env:ADMIN_PASSWORD="원하는-관리자-비밀번호"
+npm start
+```
+
+관리자 보호가 켜지면 `/admin`, `/api/leads`, `/api/leads.csv` 접근 시 브라우저 기본 로그인 창이 표시됩니다.
