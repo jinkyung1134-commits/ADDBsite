@@ -78,6 +78,10 @@ button:disabled {
   background: var(--page-bg, transparent);
 }
 
+.lead-page-boot {
+  background: var(--page-bg, #050609);
+}
+
 .lead-stage {
   width: min(430px, 100%);
   display: grid;

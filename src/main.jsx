@@ -207,7 +207,7 @@ function LeadPage() {
     phone: "",
     consent: true,
   });
-  const [siteSettings, setSiteSettings] = useState(() => cloneDefaultSettings());
+  const [siteSettings, setSiteSettings] = useState(null);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [savedLead, setSavedLead] = useState(null);
@@ -273,6 +273,10 @@ function LeadPage() {
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  if (!siteSettings) {
+    return <main className="lead-page lead-page-boot" style={getThemeStyle(defaultSiteSettings)} aria-busy="true" />;
   }
 
   const hasKakaoFloatingLink = siteSettings.kakaoFloatingImage && siteSettings.kakaoOpenChatUrl;
