@@ -8,3 +8,4 @@ captures/
 *.log
 /data/leads.json
 /data/site-settings.json
+/data/uploads/

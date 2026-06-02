@@ -311,7 +311,7 @@ function LeadPage() {
       </section>
       {hasKakaoFloatingLink ? (
         <a className="kakao-floating-link" href={siteSettings.kakaoOpenChatUrl} target="_blank" rel="noreferrer">
-          <img src={siteSettings.kakaoFloatingImage} alt={siteSettings.kakaoFloatingAlt || "카카오톡 오픈채팅 바로가기"} />
+          <img src={siteSettings.kakaoFloatingImage} alt={siteSettings.kakaoFloatingAlt || "카카오톡 오픈채팅 바로가기"} loading="lazy" decoding="async" />
         </a>
       ) : null}
     </main>
@@ -348,7 +348,7 @@ function PhotoBlock({ block }) {
       {isVideo ? (
         <video src={mediaSrc} controls playsInline preload="metadata" />
       ) : (
-        <img src={mediaSrc} alt="신청 페이지 사진" />
+        <img src={mediaSrc} alt="신청 페이지 사진" loading="lazy" decoding="async" />
       )}
     </article>
   );
@@ -793,13 +793,20 @@ function SettingsPanel() {
 
   async function updatePhotoFile(blockId, file) {
     if (!file) return;
-    if (file.size > 40 * 1024 * 1024) {
-      setError("파일은 40MB 이하로 올려주세요.");
+    const block = settings.blocks.find((item) => item.id === blockId);
+    const maxBytes = block?.mediaType === "video" ? 80 * 1024 * 1024 : 40 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      setError(block?.mediaType === "video" ? "동영상은 80MB 이하로 올려주세요." : "사진은 40MB 이하로 올려주세요.");
       return;
     }
 
-    const imageSrc = await readFileAsDataUrl(file);
-    updateBlock(blockId, { imageSrc, mediaSrc: imageSrc });
+    try {
+      setError("");
+      const mediaSrc = await uploadMediaFile(file);
+      updateBlock(blockId, { imageSrc: mediaSrc, mediaSrc });
+    } catch (uploadError) {
+      setError(uploadError.message);
+    }
   }
 
   async function updateKakaoFloatingFile(file) {
@@ -809,8 +816,13 @@ function SettingsPanel() {
       return;
     }
 
-    const imageSrc = await readFileAsDataUrl(file);
-    setSettings((current) => ({ ...current, kakaoFloatingImage: imageSrc }));
+    try {
+      setError("");
+      const imageSrc = await uploadMediaFile(file);
+      setSettings((current) => ({ ...current, kakaoFloatingImage: imageSrc }));
+    } catch (uploadError) {
+      setError(uploadError.message);
+    }
   }
 
   async function saveSettings() {
@@ -1105,13 +1117,22 @@ function blockTypeLabel(type) {
   return "글";
 }
 
-function readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.addEventListener("load", () => resolve(reader.result));
-    reader.addEventListener("error", () => reject(new Error("사진을 불러오지 못했습니다.")));
-    reader.readAsDataURL(file);
+async function uploadMediaFile(file) {
+  const response = await fetch("/api/uploads", {
+    method: "POST",
+    headers: {
+      "Content-Type": file.type || "application/octet-stream",
+      "X-File-Name": file.name || "upload",
+    },
+    body: file,
   });
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload.error || "파일 업로드에 실패했습니다.");
+  }
+
+  return payload.url;
 }
 
 function EditableField({ helper, label, onChange, rows = 1, value }) {

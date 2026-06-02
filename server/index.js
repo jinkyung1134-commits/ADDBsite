@@ -8,6 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 const dataDir = path.join(rootDir, "data");
+const uploadsDir = path.join(dataDir, "uploads");
 const leadsFile = path.join(dataDir, "leads.json");
 const settingsFile = path.join(dataDir, "site-settings.json");
 const distDir = path.join(rootDir, "dist");
@@ -17,7 +18,18 @@ const port = Number(process.env.PORT || 8787);
 const adminUser = process.env.ADMIN_USER || "admin";
 const adminPassword = process.env.ADMIN_PASSWORD || "";
 
-app.use(express.json({ limit: "60mb" }));
+app.use(express.json({ limit: "5mb" }));
+
+const uploadExtensionByMime = {
+  "image/gif": ".gif",
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
+  "image/svg+xml": ".svg",
+  "video/mp4": ".mp4",
+  "video/quicktime": ".mov",
+  "video/webm": ".webm",
+};
 
 const defaultSiteSettings = {
   kicker: "선착순 안내방 신청",
@@ -96,6 +108,7 @@ const defaultSiteSettings = {
 
 async function ensureStore() {
   await mkdir(dataDir, { recursive: true });
+  await mkdir(uploadsDir, { recursive: true });
   try {
     await readFile(leadsFile, "utf8");
   } catch {
@@ -118,6 +131,86 @@ async function writeLeads(leads) {
 function sanitizeText(value, fallback = "", maxLength = 500) {
   const text = String(value ?? fallback).trim();
   return (text || fallback).slice(0, maxLength);
+}
+
+function isAllowedUploadMime(mimeType) {
+  return mimeType.startsWith("image/") || mimeType.startsWith("video/");
+}
+
+function extensionForUpload(mimeType, originalName = "") {
+  const mapped = uploadExtensionByMime[mimeType];
+  if (mapped) return mapped;
+
+  const originalExtension = path.extname(originalName).toLowerCase();
+  if (/^\.[a-z0-9]{2,8}$/.test(originalExtension)) return originalExtension;
+
+  return mimeType.startsWith("video/") ? ".mp4" : ".png";
+}
+
+async function saveUploadBuffer(buffer, mimeType, originalName = "") {
+  if (!Buffer.isBuffer(buffer) || !buffer.length) {
+    throw new Error("업로드할 파일이 없습니다.");
+  }
+
+  if (!isAllowedUploadMime(mimeType)) {
+    throw new Error("사진 또는 동영상 파일만 업로드할 수 있습니다.");
+  }
+
+  const maxBytes = mimeType.startsWith("video/") ? 80 * 1024 * 1024 : 40 * 1024 * 1024;
+  if (buffer.length > maxBytes) {
+    throw new Error(mimeType.startsWith("video/") ? "동영상은 80MB 이하로 올려주세요." : "사진은 40MB 이하로 올려주세요.");
+  }
+
+  const mediaDirName = mimeType.startsWith("video/") ? "videos" : "images";
+  const mediaDir = path.join(uploadsDir, mediaDirName);
+  await mkdir(mediaDir, { recursive: true });
+
+  const extension = extensionForUpload(mimeType, originalName);
+  const fileName = `${Date.now()}-${randomUUID()}${extension}`;
+  await writeFile(path.join(mediaDir, fileName), buffer);
+
+  return `/uploads/${mediaDirName}/${fileName}`;
+}
+
+async function externalizeDataUrl(value, originalName = "") {
+  if (typeof value !== "string" || !value.startsWith("data:")) return value;
+
+  const match = value.match(/^data:([^;,]+);base64,(.+)$/s);
+  if (!match) return value;
+
+  const mimeType = match[1].toLowerCase();
+  if (!isAllowedUploadMime(mimeType)) return value;
+
+  const buffer = Buffer.from(match[2], "base64");
+  return saveUploadBuffer(buffer, mimeType, originalName);
+}
+
+async function externalizeEmbeddedUploads(settings) {
+  let changed = false;
+  const nextSettings = {
+    ...settings,
+    blocks: settings.blocks.map((block) => ({ ...block })),
+  };
+
+  const nextKakaoImage = await externalizeDataUrl(nextSettings.kakaoFloatingImage, "kakao-floating");
+  if (nextKakaoImage !== nextSettings.kakaoFloatingImage) {
+    nextSettings.kakaoFloatingImage = nextKakaoImage;
+    changed = true;
+  }
+
+  for (const block of nextSettings.blocks) {
+    if (block.type !== "photo") continue;
+
+    const currentMedia = block.mediaSrc || block.imageSrc || "";
+    const nextMedia = await externalizeDataUrl(currentMedia, block.mediaType === "video" ? "media-video" : "media-image");
+    if (nextMedia !== currentMedia) {
+      block.mediaSrc = nextMedia;
+      block.imageSrc = nextMedia;
+      changed = true;
+    }
+  }
+
+  return { changed, settings: nextSettings };
 }
 
 const siteSettingLimits = {
@@ -206,20 +299,26 @@ function normalizeSettings(input) {
 }
 
 async function readSiteSettings() {
-  await mkdir(dataDir, { recursive: true });
+  await ensureStore();
   try {
     const raw = await readFile(settingsFile, "utf8");
-    return normalizeSettings(JSON.parse(raw));
+    const normalized = normalizeSettings(JSON.parse(raw));
+    const { changed, settings } = await externalizeEmbeddedUploads(normalized);
+    if (changed) {
+      await writeFile(settingsFile, JSON.stringify(settings, null, 2), "utf8");
+    }
+    return settings;
   } catch {
     return defaultSiteSettings;
   }
 }
 
 async function writeSiteSettings(settings) {
-  await mkdir(dataDir, { recursive: true });
+  await ensureStore();
   const normalized = normalizeSettings(settings);
-  await writeFile(settingsFile, JSON.stringify(normalized, null, 2), "utf8");
-  return normalized;
+  const { settings: externalized } = await externalizeEmbeddedUploads(normalized);
+  await writeFile(settingsFile, JSON.stringify(externalized, null, 2), "utf8");
+  return externalized;
 }
 
 function normalizePhone(phone) {
@@ -270,6 +369,22 @@ app.get("/api/site-settings", async (_req, res) => {
 app.put("/api/site-settings", requireAdmin, async (req, res) => {
   const settings = await writeSiteSettings(req.body.settings || {});
   res.json({ settings });
+});
+
+app.post("/api/uploads", requireAdmin, express.raw({ type: "*/*", limit: "80mb" }), async (req, res) => {
+  try {
+    const mimeType = String(req.headers["content-type"] || "").split(";")[0].toLowerCase();
+    const originalName = String(req.headers["x-file-name"] || "");
+    const url = await saveUploadBuffer(req.body, mimeType, originalName);
+
+    res.status(201).json({
+      url,
+      mimeType,
+      size: req.body.length,
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 app.get("/api/leads", requireAdmin, async (_req, res) => {
@@ -331,6 +446,7 @@ app.post("/api/leads", async (req, res) => {
   res.status(201).json({ lead });
 });
 
+app.use("/uploads", express.static(uploadsDir, { maxAge: "30d" }));
 app.use(express.static(distDir));
 
 app.use("/admin", requireAdmin);
