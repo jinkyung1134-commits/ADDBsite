@@ -1343,6 +1343,12 @@ tbody tr:hover {
     border: 0;
   }
 
+  .video-panel {
+    width: calc(100% + 36px);
+    margin-left: -18px;
+    margin-right: -18px;
+  }
+
   .lead-heading {
     margin-top: 0;
   }
